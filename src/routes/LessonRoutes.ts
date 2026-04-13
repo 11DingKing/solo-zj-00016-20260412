@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import LessonsCtrl from '../controllers/LessonsCtrl';
 import { LessonValidator, lessonSchema } from '../validators/lessonValidator';
+import { authMiddleware, adminMiddleware } from '../middlewares/auth';
 
 class LessonRoutes {
   router = Router();
@@ -12,22 +13,32 @@ class LessonRoutes {
   }
 
   intializeRoutes() {
-
     this.router.route('/').get(this.lessonsCtrl.getAllLessons);
-    this.router.route('/course/:id')
-      .get(this.lessonsCtrl.getLessonByCourse);
-    this.router.route('/:id').get(this.lessonsCtrl.getLessonById);
-    this.router.route('/')
+    this.router
+      .route('/course/:id')
+      .get(authMiddleware, this.lessonsCtrl.getLessonByCourse);
+    this.router
+      .route('/:id')
+      .get(authMiddleware, this.lessonsCtrl.getLessonById);
+    this.router
+      .route('/')
       .post(
+        authMiddleware,
+        adminMiddleware,
         this.lessonValidator.validateBody(lessonSchema),
-        this.lessonsCtrl.createLesson
+        this.lessonsCtrl.createLesson,
       );
-    this.router.route('/:id')
+    this.router
+      .route('/:id')
       .put(
+        authMiddleware,
+        adminMiddleware,
         this.lessonValidator.validateBody(lessonSchema),
-        this.lessonsCtrl.updateLesson
+        this.lessonsCtrl.updateLesson,
       );
-    this.router.route('/:id').delete(this.lessonsCtrl.deleteLesson);
+    this.router
+      .route('/:id')
+      .delete(authMiddleware, adminMiddleware, this.lessonsCtrl.deleteLesson);
   }
 }
 

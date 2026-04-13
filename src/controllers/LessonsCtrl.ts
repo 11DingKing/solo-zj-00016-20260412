@@ -1,9 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
 import { apiErrorHandler } from '../handlers/errorHandler';
 import LessonRepo from '../repositories/LessonsRepo';
+import EnrollmentRepo from '../repositories/EnrollmentRepo';
+import { AuthRequest } from '../middlewares/auth';
 
 export default class LessonsCtrl {
-  constructor() { }
+  constructor() {}
 
   async getAllLessons(req: Request, res: Response, next: NextFunction) {
     try {
@@ -14,9 +16,25 @@ export default class LessonsCtrl {
     }
   }
 
-  async getLessonByCourse(req: Request, res: Response, next: NextFunction) {
+  async getLessonByCourse(req: AuthRequest, res: Response, next: NextFunction) {
     try {
-      const lesson = await LessonRepo.getLessonByCourse(req.params.id);
+      if (!req.user) {
+        return res.status(401).json({ message: 'Unauthorized' });
+      }
+
+      const courseId = parseInt(req.params.id);
+      if (isNaN(courseId)) {
+        return res.status(400).json({ message: 'Invalid course ID' });
+      }
+
+      const isEnrolled = await EnrollmentRepo.isEnrolled(req.user.id, courseId);
+      if (!isEnrolled && req.user.role !== 'admin') {
+        return res.status(403).json({
+          message: 'Forbidden: You need to enroll in this course first',
+        });
+      }
+
+      const lesson = await LessonRepo.getLessonByCourse(courseId);
       res.json(lesson);
     } catch (error) {
       apiErrorHandler(
@@ -28,10 +46,23 @@ export default class LessonsCtrl {
     }
   }
 
-  async getLessonById(req: Request, res: any, next: NextFunction) {
+  async getLessonById(req: AuthRequest, res: any, next: NextFunction) {
     try {
+      if (!req.user) {
+        return res.status(401).json({ message: 'Unauthorized' });
+      }
+
       const result = await LessonRepo.getLessonById(req.params.id);
       if (result) {
+        const isEnrolled = await EnrollmentRepo.isEnrolled(
+          req.user.id,
+          result.courseId,
+        );
+        if (!isEnrolled && req.user.role !== 'admin') {
+          return res.status(403).json({
+            message: 'Forbidden: You need to enroll in this course first',
+          });
+        }
         return res.json(result);
       } else {
         res.status(404).send(`Lesson ${req.params.id} not found.`);
@@ -41,7 +72,7 @@ export default class LessonsCtrl {
     }
   }
 
-  async createLesson(req: Request, res: Response, next: NextFunction) {
+  async createLesson(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const result = await LessonRepo.createLesson(req['value']['body']);
       res.json(result);
@@ -50,7 +81,7 @@ export default class LessonsCtrl {
     }
   }
 
-  async updateLesson(req: Request, res: Response, next: NextFunction) {
+  async updateLesson(req: AuthRequest, res: Response, next: NextFunction) {
     const id = parseInt(req.params.id);
     try {
       const result = await LessonRepo.updateLesson(id, req['value']['body']);
@@ -65,7 +96,7 @@ export default class LessonsCtrl {
     }
   }
 
-  async deleteLesson(req: Request, res: Response, next: NextFunction) {
+  async deleteLesson(req: AuthRequest, res: Response, next: NextFunction) {
     const id = parseInt(req.params.id);
     try {
       const result = await LessonRepo.deleteLesson(id);

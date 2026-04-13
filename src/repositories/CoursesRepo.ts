@@ -2,7 +2,7 @@ import { Course } from '../models/Course';
 import { Lesson } from '../models/Lesson';
 
 class CourseRepo {
-  constructor() { }
+  constructor() {}
 
   getAllCourses(options) {
     return Course.findAll(options);
@@ -13,10 +13,22 @@ class CourseRepo {
       include: [
         {
           model: Lesson,
-          as: 'lessons'
+          as: 'lessons',
         },
       ],
     });
+  }
+
+  createCourse(props: any) {
+    return Course.create(props);
+  }
+
+  updateCourse(id: Number, props: any) {
+    return Course.update(props, { where: { id: id.toString() } });
+  }
+
+  deleteCourse(id: Number) {
+    return Course.destroy({ where: { id: id.toString() } });
   }
 }
 
